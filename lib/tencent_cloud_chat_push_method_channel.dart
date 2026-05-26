@@ -16,8 +16,11 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
 
   @override
   Future<String?> getPlatformVersion() async {
-    final version = await _methodChannel.invokeMethod<String>('getPlatformVersion');
-    return version;
+    if (Platform.isAndroid || Platform.isIOS) {
+      final version = await _methodChannel.invokeMethod<String>('getPlatformVersion');
+      return version;
+    }
+    return null;
   }
 
   @override
@@ -64,7 +67,7 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
     String? appKey,
   }) async {
     try {
-      if (Platform.isIOS || Platform.isAndroid) {
+      if (Platform.isIOS || Platform.isAndroid || Platform.isOhos) {
         final res = await _methodChannel.invokeMethod("registerPush", {
           "sdkAppId": (sdkAppId ?? 0).toString(),
           "appKey": (appKey ?? ""),
@@ -96,7 +99,9 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
   @override
   Future<TencentCloudChatPushResult> disableAutoRegisterPush() async {
     try {
-      await _methodChannel.invokeMethod("disableAutoRegisterPush");
+      if (Platform.isAndroid || Platform.isIOS) {
+        await _methodChannel.invokeMethod("disableAutoRegisterPush");
+      }
       return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
@@ -109,7 +114,9 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
   @override
   Future<TencentCloudChatPushResult> enableBackupChannels() async {
     try {
-      await _methodChannel.invokeMethod("enableBackupChannels");
+      if (Platform.isAndroid || Platform.isIOS) {
+        await _methodChannel.invokeMethod("enableBackupChannels");
+      }
       return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
@@ -126,11 +133,13 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
     required bool enable,
   }) async {
     try {
-      await _methodChannel.invokeMethod("setCustomFCMRing", {
-        "fcm_push_channel_id": channelId,
-        "private_ring_name": ringName,
-        "enable_fcm_private_ring": enable.toString(),
-      });
+      if (Platform.isAndroid) {
+        await _methodChannel.invokeMethod("setCustomFCMRing", {
+          "fcm_push_channel_id": channelId,
+          "private_ring_name": ringName,
+          "enable_fcm_private_ring": enable.toString(),
+        });
+      }
       return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
@@ -143,9 +152,11 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
   @override
   Future<TencentCloudChatPushResult> setPushBrandId({required int brandId}) async {
     try {
-      await _methodChannel.invokeMethod("setPushBrandId", {
-        "brand_id": brandId.toString(),
-      });
+      if (Platform.isAndroid) {
+        await _methodChannel.invokeMethod("setPushBrandId", {
+          "brand_id": brandId.toString(),
+        });
+      }
       return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
@@ -158,8 +169,11 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
   @override
   Future<TencentCloudChatPushResult<int>> getPushBrandId() async {
     try {
-      final res = await _methodChannel.invokeMethod("getPushBrandId");
-      return TencentCloudChatPushResult(code: 0, data: int.tryParse(res.toString()));
+      if (Platform.isAndroid) {
+        final res = await _methodChannel.invokeMethod("getPushBrandId");
+        return TencentCloudChatPushResult(code: 0, data: int.tryParse(res.toString()));
+      }
+      return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
         code: int.tryParse(e.code) ?? -1,
@@ -171,10 +185,13 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
   @override
   Future<TencentCloudChatPushResult<String>> checkPushStatus({required int brandID}) async {
     try {
-      final res = await _methodChannel.invokeMethod("checkPushStatus", {
-        "brand_id": brandID.toString(),
-      });
-      return TencentCloudChatPushResult(code: 0, data: res);
+      if (Platform.isAndroid) {
+        final res = await _methodChannel.invokeMethod("checkPushStatus", {
+          "brand_id": brandID.toString(),
+        });
+        return TencentCloudChatPushResult(code: 0, data: res);
+      }
+      return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
         code: int.tryParse(e.code) ?? -1,
@@ -201,7 +218,9 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
   @override
   Future<TencentCloudChatPushResult> setApplicationGroupID({required String applicationGroupID}) async {
     try {
-      await _methodChannel.invokeMethod("setApplicationGroupID", {"applicationGroupID": applicationGroupID});
+      if (Platform.isIOS) {
+        await _methodChannel.invokeMethod("setApplicationGroupID", {"applicationGroupID": applicationGroupID});
+      }
       return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
@@ -214,8 +233,11 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
   @override
   Future<TencentCloudChatPushResult<String>> getAndroidPushToken() async {
     try {
-      final res = await _methodChannel.invokeMethod("getAndroidPushToken");
-      return TencentCloudChatPushResult(code: 0, data: res);
+      if (Platform.isAndroid) {
+        final res = await _methodChannel.invokeMethod("getAndroidPushToken");
+        return TencentCloudChatPushResult(code: 0, data: res);
+      }
+      return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
         code: int.tryParse(e.code) ?? -1,
@@ -230,10 +252,12 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
     required String pushToken,
   }) async {
     try {
-      await _methodChannel.invokeMethod("setAndroidPushToken", {
-        "business_id": businessID,
-        "push_token": pushToken,
-      });
+      if (Platform.isAndroid) {
+        await _methodChannel.invokeMethod("setAndroidPushToken", {
+          "business_id": businessID,
+          "push_token": pushToken,
+        });
+      }
       return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
@@ -248,9 +272,11 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
     required String configs,
   }) async {
     try {
-      await _methodChannel.invokeMethod("setAndroidCustomConfigFile", {
-        "configs": configs,
-      });
+      if (Platform.isAndroid) {
+        await _methodChannel.invokeMethod("setAndroidCustomConfigFile", {
+          "configs": configs,
+        });
+      }
       return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
@@ -265,9 +291,11 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
     required int region,
   }) async {
     try {
-      await _methodChannel.invokeMethod("setXiaoMiPushStorageRegion", {
-        "region": region.toString(),
-      });
+      if (Platform.isAndroid) {
+        await _methodChannel.invokeMethod("setXiaoMiPushStorageRegion", {
+          "region": region.toString(),
+        });
+      }
       return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
@@ -334,9 +362,11 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
     required bool enable,
   }) async {
     try {
-      await _methodChannel.invokeMethod("forceUseFCMPushChannel", {
-        "forceUseFCMPushChannel": enable.toString(),
-      });
+      if (Platform.isAndroid) {
+        await _methodChannel.invokeMethod("forceUseFCMPushChannel", {
+          "forceUseFCMPushChannel": enable.toString(),
+        });
+      }
       return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
@@ -371,12 +401,14 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
     String? channelSound,
   }) async {
     try {
-      await _methodChannel.invokeMethod("createNotificationChannel", {
-        "channel_id": channelID,
-        "channel_name": channelName,
-        "channel_desc": (channelDesc ?? ""),
-        "channel_sound": (channelSound ?? ""),
-      });
+      if (Platform.isAndroid) {
+        await _methodChannel.invokeMethod("createNotificationChannel", {
+          "channel_id": channelID,
+          "channel_name": channelName,
+          "channel_desc": (channelDesc ?? ""),
+          "channel_sound": (channelSound ?? ""),
+        });
+      }
       return TencentCloudChatPushResult(code: 0);
     } on PlatformException catch (e) {
       return TencentCloudChatPushResult(
@@ -392,7 +424,7 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
     Object? param,
   }) async {
     try {
-      if (Platform.isIOS || Platform.isAndroid) {
+      if (Platform.isIOS || Platform.isAndroid || Platform.isOhos) {
         final res = await _methodChannel.invokeMethod("callExperimentalAPI", {
           "api": api,
           "param": param,
