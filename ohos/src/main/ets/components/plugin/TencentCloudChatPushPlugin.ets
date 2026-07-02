@@ -73,8 +73,9 @@ export default class TencentCloudChatPushPlugin implements FlutterPlugin, Method
     const sdkAppIdString: string = this.optArgument(_call, "sdkAppId", "0");
     const sdkAppId: number = Number.parseInt(sdkAppIdString);
     const appKey: string = this.optArgument(_call, "appKey", "");
+    const ohosCertificateID: number = this.optArgument(_call, "ohosCertificateID", 0);
     TIMPushManager.getInstance()
-      .registerPush(this.context, sdkAppId, appKey.length > 0 ? appKey : undefined)
+      .registerPush(this.context, sdkAppId, appKey.length > 0 ? appKey : undefined, ohosCertificateID > 0 ? ohosCertificateID : undefined)
       .then((pushResult: TIMPushResult) => {
         this.handlePushResult(pushResult, result)
       })

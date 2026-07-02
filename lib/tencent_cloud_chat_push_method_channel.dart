@@ -65,12 +65,14 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
   Future<TencentCloudChatPushResult> registerPush({
     int? sdkAppId,
     String? appKey,
+    int? ohosCertificateID,
   }) async {
     try {
       if (Platform.isIOS || Platform.isAndroid || Platform.isOhos) {
         final res = await _methodChannel.invokeMethod("registerPush", {
           "sdkAppId": (sdkAppId ?? 0).toString(),
           "appKey": (appKey ?? ""),
+          "ohosCertificateID": ohosCertificateID,
         });
         return TencentCloudChatPushResult(code: 0, data: res);
       }

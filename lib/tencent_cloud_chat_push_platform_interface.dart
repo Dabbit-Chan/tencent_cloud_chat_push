@@ -53,6 +53,7 @@ abstract class TencentCloudChatPushPlatform extends PlatformInterface {
   Future<TencentCloudChatPushResult> registerPush({
     int? sdkAppId,
     String? appKey,
+    int? ohosCertificateID,
   }) {
     throw UnimplementedError('registerPush() has not been implemented.');
   }

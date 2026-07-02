@@ -39,7 +39,8 @@ class TencentCloudChatPush {
     int? sdkAppId,
     String? appKey,
     int? apnsCertificateID,
-    String? applicationGroupID
+    String? applicationGroupID,
+    int? ohosCertificateID,
   }) async {
     TencentImSDKPlugin.v2TIMManager.uikitTrace(
       trace: "$tag registerPush start",
@@ -91,6 +92,7 @@ class TencentCloudChatPush {
       final registerPushRes = await TencentCloudChatPushPlatform.instance.registerPush(
         sdkAppId: sdkAppId,
         appKey: appKey,
+        ohosCertificateID: ohosCertificateID,
       );
       TencentImSDKPlugin.v2TIMManager.uikitTrace(
         trace: "$tag registerPush completed",
