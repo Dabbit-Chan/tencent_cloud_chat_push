@@ -1,19 +1,26 @@
 import {
+  AbilityAware,
+  AbilityPluginBinding,
   FlutterPlugin,
   FlutterPluginBinding,
   MethodCall,
   MethodCallHandler,
   MethodChannel,
   MethodResult,
+  NewWantListener,
 } from '@ohos/flutter_ohos';
+import AbilityConstant from '@ohos.app.ability.AbilityConstant';
+import Want from '@ohos.app.ability.Want';
 import { Context as TIMPushContext } from '@ohos.abilityAccessCtrl';
 import { TIMPushListener, TIMPushManager, TIMPushMessage, TIMPushResult } from '@tencentcloud/timpush';
 
 /** TencentCloudChatPushPlugin **/
-export default class TencentCloudChatPushPlugin implements FlutterPlugin, MethodCallHandler, TIMPushListener {
+export default class TencentCloudChatPushPlugin implements FlutterPlugin, MethodCallHandler, TIMPushListener, AbilityAware, NewWantListener {
   private channel: MethodChannel | null = null;
   private context: TIMPushContext | null = null;
   private hasAddedPushListener: boolean = false;
+  private hasRegisteredNotificationClickedEvent: boolean = false;
+  private pendingNotificationClickedExts: Array<string> = [];
 
   constructor() {
   }
@@ -36,8 +43,26 @@ export default class TencentCloudChatPushPlugin implements FlutterPlugin, Method
     this.context = null
   }
 
+  onAttachedToAbility(binding: AbilityPluginBinding): void {
+    const launchWant = binding.getAbility().launchWant;
+    if (launchWant !== null && launchWant !== undefined) {
+      this.handleNotificationClickedWant(launchWant);
+    }
+    binding.addOnNewWantListener(this);
+  }
+
+  onDetachedFromAbility(): void {
+  }
+
+  onNewWant(want: Want, launchParams: AbilityConstant.LaunchParam): void {
+    this.handleNotificationClickedWant(want);
+  }
+
   onMethodCall(call: MethodCall, result: MethodResult): void {
     switch (call.method) {
+      case "registerOnNotificationClickedEvent":
+        this.registerOnNotificationClickedEvent(result);
+        break;
       case "registerPush":
         this.registerPush(call, result);
         break;
@@ -62,6 +87,12 @@ export default class TencentCloudChatPushPlugin implements FlutterPlugin, Method
       default:
         result.notImplemented()
     }
+  }
+
+  private registerOnNotificationClickedEvent(result: MethodResult): void {
+    this.hasRegisteredNotificationClickedEvent = true;
+    this.flushPendingNotificationClickedExts();
+    result.success("")
   }
 
   private registerPush(_call: MethodCall, result: MethodResult): void {
@@ -123,6 +154,7 @@ export default class TencentCloudChatPushPlugin implements FlutterPlugin, Method
       TIMPushManager.getInstance().addPushListener(this);
       this.hasAddedPushListener = true;
     }
+    this.flushPendingNotificationClickedExts();
     result.success("")
   }
 
@@ -159,8 +191,63 @@ export default class TencentCloudChatPushPlugin implements FlutterPlugin, Method
   }
 
   onNotificationClicked(ext: string): void {
+    this.dispatchNotificationClicked(ext);
+  }
+
+  private handleNotificationClickedWant(want: Want): void {
+    if (!this.isTIMPushClickWant(want)) {
+      return;
+    }
+    const ext = this.getPushExt(want);
+    if (ext.length === 0) {
+      return;
+    }
+    this.dispatchNotificationClicked(ext);
+  }
+
+  private isTIMPushClickWant(want: Want): boolean {
+    const action = want.action;
+    const uri = want.uri;
+    if (action === 'com.timpush.action') {
+      return true;
+    }
+    return uri !== undefined && uri !== null && uri.includes('com.tencent.timpush');
+  }
+
+  private getPushExt(want: Want): string {
+    const parameters = want.parameters;
+    if (parameters === null || parameters === undefined) {
+      return '';
+    }
+    const ext = parameters['ext'];
+    if (typeof ext === 'string') {
+      return ext;
+    }
+    return '';
+  }
+
+  private dispatchNotificationClicked(ext: string): void {
+    if (!this.canDispatchNotificationClicked()) {
+      this.pendingNotificationClickedExts.push(ext);
+      return;
+    }
     this.invokeFlutter("onNotificationClicked", ext);
     this.invokeFlutter("on_notification_clicked", ext);
+  }
+
+  private canDispatchNotificationClicked(): boolean {
+    return this.channel !== null && (this.hasRegisteredNotificationClickedEvent || this.hasAddedPushListener);
+  }
+
+  private flushPendingNotificationClickedExts(): void {
+    if (!this.canDispatchNotificationClicked()) {
+      return;
+    }
+    const pendingExts = this.pendingNotificationClickedExts;
+    this.pendingNotificationClickedExts = [];
+    pendingExts.forEach((ext: string): void => {
+      this.dispatchNotificationClicked(ext);
+    });
   }
 
   private handlePushResult(pushResult: TIMPushResult, result: MethodResult): void {

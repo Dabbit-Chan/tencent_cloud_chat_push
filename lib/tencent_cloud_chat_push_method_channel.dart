@@ -30,7 +30,7 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
     try {
       _tencentCloudChatPushModal.onNotificationClicked = onNotificationClicked;
       _methodChannel.setMethodCallHandler(_tencentCloudChatPushModal.handleMethod);
-      if (Platform.isAndroid || Platform.isIOS) {
+      if (Platform.isAndroid || Platform.isIOS || Platform.isOhos) {
         await _methodChannel.invokeMethod("registerOnNotificationClickedEvent");
       }
       return TencentCloudChatPushResult(code: 0);
