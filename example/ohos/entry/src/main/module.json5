@@ -29,6 +29,19 @@
             "actions": [
               "action.system.home"
             ]
+          },
+          {
+            "actions": [
+              ""
+            ],
+            "uris": [
+              {
+                "scheme": "https",
+                "host": "com.tencent.timpush",
+                "port": "8080",
+                "path": "push/click"
+              }
+            ]
           }
         ]
       }

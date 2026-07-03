@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:tencent_cloud_chat_push/common/tim_push_listener.dart';
 import 'package:tencent_cloud_chat_push/tencent_cloud_chat_push.dart';
 
 void main() {
@@ -17,12 +18,30 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String _platformVersion = 'Unknown';
+  String _lastNotificationClickedExt = 'None';
   final _tencentCloudChatPushPlugin = TencentCloudChatPush();
+  late final TIMPushListener _pushListener = TIMPushListener(
+    onNotificationClicked: (String ext) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _lastNotificationClickedExt = ext;
+      });
+    },
+  );
 
   @override
   void initState() {
     super.initState();
+    unawaited(_tencentCloudChatPushPlugin.addPushListener(listener: _pushListener));
     initPlatformState();
+  }
+
+  @override
+  void dispose() {
+    unawaited(_tencentCloudChatPushPlugin.removePushListener(listener: _pushListener));
+    super.dispose();
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
@@ -55,7 +74,10 @@ class _MyAppState extends State<MyApp> {
           title: const Text('Plugin example app'),
         ),
         body: Center(
-          child: Text('Running on: $_platformVersion\n'),
+          child: Text(
+            'Running on: $_platformVersion\n'
+            'Last notification click ext: $_lastNotificationClickedExt\n',
+          ),
         ),
       ),
     );
