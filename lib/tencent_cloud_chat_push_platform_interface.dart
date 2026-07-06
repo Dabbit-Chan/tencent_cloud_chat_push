@@ -66,6 +66,10 @@ abstract class TencentCloudChatPushPlatform extends PlatformInterface {
     throw UnimplementedError('unRegisterPush() has not been implemented.');
   }
 
+  Future<TencentCloudChatPushResult> syncBadgeNumber({required int badgeNumber}) {
+    throw UnimplementedError('syncBadgeNumber() has not been implemented.');
+  }
+
   Future<TencentCloudChatPushResult> disableAutoRegisterPush() {
     throw UnimplementedError('disableAutoRegisterPush() has not been implemented.');
   }

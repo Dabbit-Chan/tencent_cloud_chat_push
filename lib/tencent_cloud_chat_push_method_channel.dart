@@ -99,6 +99,23 @@ class MethodChannelTencentCloudChatPush extends TencentCloudChatPushPlatform {
   }
 
   @override
+  Future<TencentCloudChatPushResult> syncBadgeNumber({required int badgeNumber}) async {
+    try {
+      if (Platform.isOhos) {
+        await _methodChannel.invokeMethod("syncBadgeNumber", {
+          "badgeNumber": badgeNumber,
+        });
+      }
+      return TencentCloudChatPushResult(code: 0);
+    } on PlatformException catch (e) {
+      return TencentCloudChatPushResult(
+        code: int.tryParse(e.code) ?? -1,
+        errorMessage: e.message,
+      );
+    }
+  }
+
+  @override
   Future<TencentCloudChatPushResult> disableAutoRegisterPush() async {
     try {
       if (Platform.isAndroid || Platform.isIOS) {

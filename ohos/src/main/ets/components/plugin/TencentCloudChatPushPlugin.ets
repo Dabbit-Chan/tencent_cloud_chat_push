@@ -12,6 +12,7 @@ import {
 import AbilityConstant from '@ohos.app.ability.AbilityConstant';
 import Want from '@ohos.app.ability.Want';
 import { Context as TIMPushContext } from '@ohos.abilityAccessCtrl';
+import notificationManager from '@ohos.notificationManager';
 import { TIMPushListener, TIMPushManager, TIMPushMessage, TIMPushResult } from '@tencentcloud/timpush';
 
 /** TencentCloudChatPushPlugin **/
@@ -80,6 +81,9 @@ export default class TencentCloudChatPushPlugin implements FlutterPlugin, Method
         break;
       case "disablePostNotificationInForeground":
         this.disablePostNotificationInForeground(call, result);
+        break;
+      case "syncBadgeNumber":
+        this.syncBadgeNumber(call, result);
         break;
       case "callExperimentalAPI":
         this.callExperimentalAPI(call, result);
@@ -162,6 +166,17 @@ export default class TencentCloudChatPushPlugin implements FlutterPlugin, Method
     const disableString: string = this.optArgument(_call, "disablePostNotificationInForeground", "false");
     TIMPushManager.getInstance().disablePostNotificationInForeground(disableString === "true")
     result.success("")
+  }
+
+  private syncBadgeNumber(_call: MethodCall, result: MethodResult): void {
+    const badgeNumber: number = this.optArgument(_call, "badgeNumber", 0);
+    this.setBadgeNumber(badgeNumber)
+      .then(() => {
+        result.success("")
+      })
+      .catch((error: Error) => {
+        this.fail(result, "-1", error.message)
+      })
   }
 
   private callExperimentalAPI(_call: MethodCall, result: MethodResult): void {
@@ -248,6 +263,12 @@ export default class TencentCloudChatPushPlugin implements FlutterPlugin, Method
     pendingExts.forEach((ext: string): void => {
       this.dispatchNotificationClicked(ext);
     });
+  }
+
+  private setBadgeNumber(totalUnreadCount: number): Promise<void> {
+    const badgeNumber = Math.max(0, Math.floor(totalUnreadCount));
+    console.info(`TencentCloudChatPushPlugin syncBadgeNumber: badgeNumber=${badgeNumber}`);
+    return notificationManager.setBadgeNumber(badgeNumber);
   }
 
   private handlePushResult(pushResult: TIMPushResult, result: MethodResult): void {

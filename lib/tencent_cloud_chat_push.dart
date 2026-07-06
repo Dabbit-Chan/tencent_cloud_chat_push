@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:tencent_cloud_chat_push/common/common_defines.dart';
 import 'package:tencent_cloud_chat_push/common/defines.dart';
 import 'package:tencent_cloud_chat_push/common/tim_push_listener.dart';
 import 'package:tencent_cloud_chat_push/tencent_cloud_chat_push_platform_interface.dart';
+import 'package:tencent_cloud_chat_sdk/enum/V2TimConversationListener.dart';
+import 'package:tencent_cloud_chat_sdk/models/v2_tim_conversation.dart';
+import 'package:tencent_cloud_chat_sdk/models/v2_tim_conversation_filter.dart';
 import 'package:tencent_cloud_chat_sdk/tencent_im_sdk_plugin.dart';
 
 class TencentCloudChatPush {
@@ -14,6 +18,8 @@ class TencentCloudChatPush {
 
   factory TencentCloudChatPush() => _instance;
   static final TencentCloudChatPush _instance = TencentCloudChatPush._internal();
+  V2TimConversationListener? _ohosUnreadBadgeListener;
+  bool _hasAddedOhosUnreadBadgeListener = false;
 
   getInstance() {
     return _instance;
@@ -97,6 +103,9 @@ class TencentCloudChatPush {
       TencentImSDKPlugin.v2TIMManager.uikitTrace(
         trace: "$tag registerPush completed",
       );
+      if (registerPushRes.code == 0) {
+        await _ensureOhosUnreadBadgeSync();
+      }
       return registerPushRes;
     } else {
       TencentImSDKPlugin.v2TIMManager.uikitTrace(
@@ -111,7 +120,119 @@ class TencentCloudChatPush {
     TencentImSDKPlugin.v2TIMManager.uikitTrace(
       trace: "$tag unRegisterPush",
     );
-    return TencentCloudChatPushPlatform.instance.unRegisterPush();
+    final res = await TencentCloudChatPushPlatform.instance.unRegisterPush();
+    if (res.code == 0) {
+      await _removeOhosUnreadBadgeSync();
+    }
+    return res;
+  }
+
+  Future<void> _ensureOhosUnreadBadgeSync() async {
+    if (!Platform.isOhos) {
+      return;
+    }
+
+    try {
+      final conversationManager = TencentImSDKPlugin.v2TIMManager.getConversationManager();
+      _ohosUnreadBadgeListener ??= _createOhosUnreadBadgeListener();
+      if (!_hasAddedOhosUnreadBadgeListener) {
+        await conversationManager.addConversationListener(listener: _ohosUnreadBadgeListener!);
+        _hasAddedOhosUnreadBadgeListener = true;
+        _logOhosUnreadBadgeSync("addConversationListener");
+      }
+
+      final unreadRes = await conversationManager.getTotalUnreadMessageCount();
+      _logOhosUnreadBadgeSync(
+        "getTotalUnreadMessageCount: code=${unreadRes.code}, totalUnreadCount=${unreadRes.data}",
+      );
+      if (unreadRes.code == 0 && unreadRes.data != null) {
+        await _syncOhosBadgeNumber(unreadRes.data!);
+      }
+    } catch (error) {
+      _logOhosUnreadBadgeSync("failed: $error");
+    }
+  }
+
+  Future<void> _removeOhosUnreadBadgeSync() async {
+    if (!Platform.isOhos || !_hasAddedOhosUnreadBadgeListener || _ohosUnreadBadgeListener == null) {
+      return;
+    }
+
+    try {
+      await TencentImSDKPlugin.v2TIMManager
+          .getConversationManager()
+          .removeConversationListener(listener: _ohosUnreadBadgeListener);
+      _hasAddedOhosUnreadBadgeListener = false;
+      _logOhosUnreadBadgeSync("removeConversationListener");
+    } catch (error) {
+      _logOhosUnreadBadgeSync("removeConversationListener failed: $error");
+    }
+  }
+
+  V2TimConversationListener _createOhosUnreadBadgeListener() {
+    return V2TimConversationListener(
+      onSyncServerStart: () {
+        _logOhosUnreadBadgeSync("onSyncServerStart");
+      },
+      onSyncServerFinish: () {
+        _logOhosUnreadBadgeSync("onSyncServerFinish");
+      },
+      onSyncServerFailed: () {
+        _logOhosUnreadBadgeSync("onSyncServerFailed");
+      },
+      onNewConversation: (List<V2TimConversation> conversationList) {
+        _logOhosUnreadBadgeSync("onNewConversation: ${_describeConversations(conversationList)}");
+      },
+      onConversationChanged: (List<V2TimConversation> conversationList) {
+        _logOhosUnreadBadgeSync("onConversationChanged: ${_describeConversations(conversationList)}");
+      },
+      onConversationDeleted: (List<String> conversationIDList) {
+        _logOhosUnreadBadgeSync("onConversationDeleted: count=${conversationIDList.length}, conversationIDs=${conversationIDList.join(",")}");
+      },
+      onTotalUnreadMessageCountChanged: (int totalUnreadCount) {
+        _logOhosUnreadBadgeSync("onTotalUnreadMessageCountChanged: totalUnreadCount=$totalUnreadCount");
+        unawaited(_syncOhosBadgeNumber(totalUnreadCount));
+      },
+      onUnreadMessageCountChangedByFilter: (V2TimConversationFilter filter, int totalUnreadCount) {
+        _logOhosUnreadBadgeSync("onUnreadMessageCountChangedByFilter: ${filter.toLogString()}, totalUnreadCount=$totalUnreadCount");
+      },
+      onConversationGroupCreated: (String groupName, List<V2TimConversation> conversationList) {
+        _logOhosUnreadBadgeSync("onConversationGroupCreated: groupName=$groupName, ${_describeConversations(conversationList)}");
+      },
+      onConversationGroupDeleted: (String groupName) {
+        _logOhosUnreadBadgeSync("onConversationGroupDeleted: groupName=$groupName");
+      },
+      onConversationGroupNameChanged: (String oldName, String newName) {
+        _logOhosUnreadBadgeSync("onConversationGroupNameChanged: oldName=$oldName, newName=$newName");
+      },
+      onConversationsAddedToGroup: (String groupName, List<V2TimConversation> conversationList) {
+        _logOhosUnreadBadgeSync("onConversationsAddedToGroup: groupName=$groupName, ${_describeConversations(conversationList)}");
+      },
+      onConversationsDeletedFromGroup: (String groupName, List<V2TimConversation> conversationList) {
+        _logOhosUnreadBadgeSync("onConversationsDeletedFromGroup: groupName=$groupName, ${_describeConversations(conversationList)}");
+      },
+    );
+  }
+
+  Future<void> _syncOhosBadgeNumber(int totalUnreadCount) async {
+    final badgeNumber = totalUnreadCount < 0 ? 0 : totalUnreadCount;
+    final res = await TencentCloudChatPushPlatform.instance.syncBadgeNumber(badgeNumber: badgeNumber);
+    if (res.code != 0) {
+      _logOhosUnreadBadgeSync("syncBadgeNumber failed: code=${res.code}, message=${res.errorMessage}");
+    }
+  }
+
+  String _describeConversations(List<V2TimConversation> conversationList) {
+    final conversations = conversationList.map((conversation) {
+      return "${conversation.conversationID}:${conversation.unreadCount ?? 0}";
+    }).join(",");
+    return "count=${conversationList.length}, conversations=$conversations";
+  }
+
+  void _logOhosUnreadBadgeSync(String message) {
+    final log = "$tag ohos unread badge sync $message";
+    debugPrint(log);
+    unawaited(TencentImSDKPlugin.v2TIMManager.uikitTrace(trace: log));
   }
 
   ///  1.3 After successfully registering for the offline push notification service,
